@@ -16,19 +16,12 @@ const createBudgetService = async (
   }
 
   const { needs, savings, wants } = splitIncome(total_income);
-
-  // Get the current month and year
   const now = new Date();
-  const month_year = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`; // Format: YYYY-MM
-
-  // Delete all previous budgets
+  const month_year = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`; 
   await Budget.deleteMany({ user_id });
-
-  // Check if a budget already exists for this month (optional, as we're deleting all budgets above)
   const existingBudget = await Budget.findOne({ user_id, month_year });
 
   if (existingBudget) {
-    // Update the existing budget
     existingBudget.budget_name = budget_name;
     existingBudget.total_income = total_income;
     existingBudget.needs_budget = needs;
@@ -37,8 +30,6 @@ const createBudgetService = async (
     await existingBudget.save();
     return existingBudget;
   }
-
-  // Create a new budget
   const newBudget = new Budget({
     user_id,
     budget_name,
@@ -55,20 +46,13 @@ const getAllBudgets = async (userId: string) => {
   if (!mongoose.Types.ObjectId.isValid(userId)) {
     throw new CustomError("Invalid user ID", 400);
   }
-
-  // Fetch the user's budget
   const budget = await Budget.findOne({ user_id: userId });
-
   if (!budget) {
     return null;
   }
-
-  // Define the current month's date range
   const now = new Date();
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
   const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-
-  // Fetch current month's transactions and goals for the user
   const transactions = await Transaction.find({
     user_id: userId,
     type: "expense",
@@ -77,25 +61,21 @@ const getAllBudgets = async (userId: string) => {
 
   const goals = await Goal.find({ user_id: userId });
 
-  // Calculate savings amount
   const totalAccumulatedSavings = goals.reduce(
     (acc, goal) => acc + goal.accumulated_amount,
     0
   );
 
-  // Utility function for calculating percentages and flags
   const calculateSpentPercent = (
     spentAmount: number,
     budget: number
   ): { percent: number; isOver: boolean } => {
     const rawPercent = (spentAmount / budget) * 100;
     return {
-      percent: rawPercent > 100 ? 100 : rawPercent, // Cap at 100%
-      isOver: rawPercent > 100, // Flag if exceeds 100%
+      percent: rawPercent > 100 ? 100 : rawPercent, 
+      isOver: rawPercent > 100,
     };
   };
-
-  // Filter transactions by priority type
   const needsTransactions = transactions.filter(
     (transaction) => transaction.category.priority_type === "need"
   );
@@ -103,7 +83,6 @@ const getAllBudgets = async (userId: string) => {
     (transaction) => transaction.category.priority_type === "want"
   );
 
-  // Calculate spent amounts
   const needsSpentAmount = needsTransactions.reduce(
     (acc, transaction) => acc + parseFloat(transaction.amount),
     0
@@ -113,7 +92,6 @@ const getAllBudgets = async (userId: string) => {
     0
   );
 
-  // Calculate percentages and flags
   const { percent: needsSpentPercent, isOver: isNeedsOverAvailableBalance } =
     calculateSpentPercent(needsSpentAmount, budget.needs_budget);
   const { percent: wantsSpentPercent, isOver: isWantsOverAvailableBalance } =
@@ -123,7 +101,6 @@ const getAllBudgets = async (userId: string) => {
     100
   );
 
-  // Check if total income is exceeded
   const totalExpenses = needsSpentAmount + wantsSpentAmount;
   const isTotalIncomeExceeded = totalExpenses > budget.total_income;
 
