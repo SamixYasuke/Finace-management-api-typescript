@@ -15,7 +15,7 @@ import cron from "node-cron";
 const app = express();
 
 app.use(express.json());
-cron.schedule("*/10 * * * *", sendPingRequest);
+cron.schedule("0 * * * *", sendPingRequest);
 
 app.use("/api/v1/auth", authRoute);
 app.use("/api/v1", categoryRoute);
